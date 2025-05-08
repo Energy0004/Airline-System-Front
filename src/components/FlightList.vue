@@ -50,7 +50,9 @@
         </p>
   
         <div class="action-buttons">
-          <a href="/manage-booking/" class="btn btn-secondary">Manage My Booking</a>
+          <router-link v-if="isAuthenticated" :to="`/manage-booking/`" class="btn btn-secondary">
+            Manage My Booking
+          </router-link>
         </div>
       </div>
     </div>
@@ -67,6 +69,11 @@
         loading: false,
         error: null,
       };
+    },
+    computed: {
+      isAuthenticated() {
+        return !!localStorage.getItem('auth_token');
+      }
     },
     methods: {
       fetchFlights() {

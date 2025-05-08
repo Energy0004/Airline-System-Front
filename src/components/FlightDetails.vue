@@ -30,14 +30,19 @@
           </div>
   
           <div v-if="flight.passengers && flight.passengers.length" class="passengers-list">
-            <h3>🧑‍✈️ Passengers on this flight:</h3>
-            <ul>
-              <li v-for="(passenger, index) in flight.passengers" :key="index">
-                {{ passenger.name }} ({{ passenger.email }})
-              </li>
-            </ul>
-          </div>
-  
+                <h3>🧑‍✈️ Passengers on this flight:</h3>
+                <ul>
+                <li v-for="(passenger, index) in flight.passengers" :key="index">
+                    <div class="passenger-info">
+                    <div class="avatar">{{ passenger.name[0] }}</div>
+                    <div>
+                        <div class="name">{{ passenger.name }}</div>
+                        <div class="email">{{ passenger.email }}</div>
+                    </div>
+                    </div>
+                </li>
+                </ul>
+            </div>
           <div v-else class="no-passengers">
             <p>No passengers have booked this flight yet.</p>
           </div>
@@ -150,27 +155,66 @@
   }
   
   .passengers-list {
-    margin-top: 20px;
-    background-color: #e9f7ef;
-    padding: 15px;
-    border-radius: 8px;
-  }
-  
-  .passengers-list h3 {
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: #2c3e50;
-  }
-  
-  .passengers-list ul {
-    list-style: none;
-    padding-left: 0;
-  }
-  
-  .passengers-list li {
-    padding: 8px 0;
-    border-bottom: 1px solid #ccc;
-  }
+  background-color: white;
+  border: 1px solid var(--gray);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 20px;
+}
+
+.passengers-list h3 {
+  font-size: 20px;
+  color: var(--primary);
+  margin-bottom: 15px;
+}
+
+.passengers-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.passengers-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gray);
+}
+
+.passengers-list li:last-child {
+  border-bottom: none;
+}
+
+.passengers-list li:hover {
+  background-color: var(--gray-light);
+}
+
+.passenger-info {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 15px;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--dark);
+}
+
+.email {
+  color: #6c757d;
+  font-size: 14px;
+}
   
   .no-passengers {
     margin-top: 20px;

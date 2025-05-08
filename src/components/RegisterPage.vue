@@ -3,7 +3,8 @@
     <div class="content-card">
       <h1>Register</h1>
       <!-- Error message -->
-      <p v-if="error" class="error">{{ error }}</p>
+      <!-- <p v-if="error" class="error">{{ error }}</p> -->
+      <p v-for="(err, index) in error" :key="index" class="error">{{ err }}</p>
 
       <form @submit.prevent="submitForm">
         <!-- Username -->
@@ -58,7 +59,7 @@
     methods: {
       async submitForm() {
         if (this.password !== this.confirmPassword) {
-          this.error = "Passwords do not match!";
+          this.error = ["Passwords do not match!"];
           return;
         }
   
@@ -79,20 +80,20 @@
           });
   
           const data = await response.json();
-  
+          console.log(data)
           if (response.status === 201) {
             if (data.tokens && data.tokens.access) {
               localStorage.setItem('auth_token', data.tokens.access);
               localStorage.setItem('user', JSON.stringify(data.user));
               window.location.href = '/';
             } else {
-              this.error = "Token not received from server. Please try again.";
+              this.error = ["Token not received from server. Please try again."];
             }
           } else {
-            this.error = data.detail || "Registration failed. Please try again.";
+            this.error = data.password || data.email || data.username || ["Registration failed. Please try again."];
           }
         } catch (err) {
-          this.error = "An error occurred. Please try again.";
+          this.error = ["An error occurred. Please try again."];
           console.error(err);
         }
       },

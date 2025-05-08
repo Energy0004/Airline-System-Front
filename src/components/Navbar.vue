@@ -59,7 +59,8 @@
         localStorage.removeItem('user');
   
         // Redirect to the main flights page after logout
-        this.$router.push('/');
+        // this.$router.push('/');
+        window.location.href = '/';
   
         // Reset the username in the UI
         this.username = null;
