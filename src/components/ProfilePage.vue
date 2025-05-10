@@ -2,13 +2,21 @@
   import axios from 'axios';
   import { jwtDecode } from 'jwt-decode';
   import { format } from 'date-fns';
+  import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+
   
   export default {
     name: 'Profile',
+    components: { FontAwesomeIcon },
     data() {
         return {
             isAdmin: false,
             user: { username: '', email: '', password: '' },
+            showDeleteModal: false,
+            selectedUserToDelete: null,
+            showToastUpdated: false,
+            showToastDeleted: false,
+            showToastCreated: false,
             bookings: [],
             users: [],
             selectedUser: null,
@@ -16,10 +24,10 @@
             newUser: { username: '', email: '', password: '', isAdmin: false },
             passwordForm: { new_password: '', confirm_password: '' }, 
             showModal: false,
-            updateUserErrors: null,            // <- ошибки профиля
-            updatePasswordErrors: null,        // <- ошибки пароля
+            showEditModal: false,
+            updateUserErrors: null,  
+            updatePasswordErrors: null,
             passwordChangedSuccess: false,
-
         };
     },
     mounted() {
@@ -28,7 +36,7 @@
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             try {
                 const decoded = jwtDecode(token);
-                // console.log(decoded)
+                console.log(decoded)
                 this.isAdmin = decoded.isAdmin || false;
 
                 this.user.username = decoded.username || '';
@@ -82,7 +90,8 @@
           headers: { Authorization: `Bearer ${token}` }
         })
         .then(() => {
-          alert('Profile updated successfully');
+          this.showToastUpdated = true;
+          setTimeout(() => this.showToastUpdated = false, 4000);
         })
         .catch(error => {
           if (error.response && error.response.data) {
@@ -120,7 +129,7 @@
       deleteUser() {
         const token = localStorage.getItem("auth_token");
 
-        axios.delete('http://127.0.0.1:8000/api/users/me/', {
+        axios.delete('http://127.0.0.1:8000/api/users/delete/me/', {
           headers: { Authorization: `Bearer ${token}` }
         })
           .then(() => {
@@ -136,7 +145,7 @@
         this.showModal = false;
       },
       fetchAllUsers() {
-        axios.get('http://127.0.0.1:8000/api/users')
+        axios.get('http://127.0.0.1:8000/api/admin/users')
           .then(response => {
             this.users = response.data;
           })
@@ -146,51 +155,61 @@
       },
       selectUserForEdit(user) {
         this.selectedUser = { ...user };
+        this.showEditModal = true;
+      },
+      closeEditModal() {
+        this.showEditModal = false;
+        this.updateUserErrors = ''
       },
       updateSelectedUser() {
-        axios.put(`http://127.0.0.1:8000/api/users/${this.selectedUser.id}`, this.selectedUser)
+        axios.put(`http://127.0.0.1:8000/api/admin/users/${this.selectedUser.id}/`, this.selectedUser)
           .then(() => {
-            alert('User updated successfully');
+            this.showToastUpdated = true;
+            setTimeout(() => this.showToastUpdated = false, 4000);
             this.fetchAllUsers();
             this.selectedUser = null;
+            this.showEditModal = false;
+            this.updateUserErrors = ''
           })
           .catch(error => {
-            console.error('Error updating user:', error);
+            console.error('Error updating user:', error.response.data.username);
+            this.updateUserErrors = Object.values(error.response.data).flat();
           });
       },
-      deleteSelectedUser(userId) {
-        if (confirm('Are you sure you want to delete this user?')) {
-          axios.delete(`http://127.0.0.1:8000/api/users/${userId}`)
-            .then(() => {
-              alert('User deleted successfully');
-              this.fetchAllUsers();
-            })
-            .catch(error => {
-              console.error('Error deleting user:', error);
-            });
-        }
+      openDeleteModal(user) {
+        this.selectedUserToDelete = user;
+        this.showDeleteModal = true;
+      },
+      closeDeleteModal() {
+        this.showDeleteModal = false;
+        this.selectedUserToDelete = null;
+      },
+      confirmDeleteUser() {
+        axios.delete(`http://127.0.0.1:8000/api/admin/users/${this.selectedUserToDelete.id}/`)
+          .then(() => {
+            this.showToastDeleted = true;
+            setTimeout(() => this.showToastDeleted = false, 4000);
+            this.fetchAllUsers();
+            this.closeDeleteModal();
+          })
+          .catch(error => {
+            console.error('Error deleting user:', error);
+          });
       },
       createUser() {
-        axios.post('http://127.0.0.1:8000/api/users', this.newUser)
+        axios.post('http://127.0.0.1:8000/api/admin/users/', this.newUser)
           .then(() => {
-            alert('User created successfully');
+            this.showToastCreated = true;
+            setTimeout(() => this.showToastCreated = false, 4000);
             this.fetchAllUsers();
             this.newUser = { username: '', email: '', password: '', isAdmin: false };
+            this.updateUserErrors = '';
           })
           .catch(error => {
             console.error('Error creating user:', error);
+            this.updateUserErrors = Object.values(error.response.data).flat();
           });
       },
-      getBookingsForUser(userId) {
-        axios.get(`http://127.0.0.1:8000/api/bookings/user/${userId}`)
-          .then(response => {
-            this.userBookings = response.data;
-            this.selectedUser = this.users.find(u => u.id === userId);
-          })
-          .catch(error => {
-            console.error('Error fetching user bookings:', error);
-          });
-      }
     }
   };
   </script>
@@ -317,39 +336,81 @@
                 <tr v-for="user in users" :key="user.id">
                   <td>{{ user.username }}</td>
                   <td>{{ user.email }}</td>
-                  <td>{{ user.isAdmin ? 'Admin' : 'User' }}</td>
-                  <td>
-                    <button @click="selectUserForEdit(user)" class="btn btn-primary">Edit</button>
-                    <button @click="deleteSelectedUser(user.id)" class="btn btn-danger">Delete</button>
-                    <button @click="getBookingsForUser(user.id)" class="btn btn-info">View Bookings</button>
+                  <td>{{ user.is_staff ? "Admin" : "User" }}</td>
+                  <td v-if="!user.is_staff">
+                    <!-- Edit Icon -->
+                    <button @click="selectUserForEdit(user)" class="icon-btn">
+                      <font-awesome-icon icon="pen" />
+                    </button>
+                    <!-- Delete Icon -->
+                    <!-- <button @click="deleteSelectedUser(user.id)" class="icon-btn danger">
+                      <font-awesome-icon icon="trash" />
+                    </button> -->
+                    <button @click="openDeleteModal(user)" class="icon-btn danger">
+                      <font-awesome-icon icon="trash" />
+                    </button>
+                    <!-- View Bookings Icon (router-link) -->
+                    <router-link
+                      :to="{ name: 'AdminUserBookingsPage', params: { userId: user.id }, query: { username: user.username } }"
+                      class="icon-btn info"
+                    >
+                      <font-awesome-icon icon="book" />
+                    </router-link>
                   </td>
+                  <td v-else></td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <h3 v-if="selectedUser">✏️ Edit User: {{ selectedUser.username }}</h3>
-          <form v-if="selectedUser" @submit.prevent="updateSelectedUser" class="user-form">
-            <label>
-              Username:
-              <input v-model="selectedUser.username" required placeholder="Enter username" />
-            </label>
-            <label>
-              Email:
-              <input v-model="selectedUser.email" type="email" required placeholder="Enter email" />
-            </label>
-            <label>
-              Password:
-              <input v-model="selectedUser.password" type="password" placeholder="Enter new password" />
-            </label>
-            <label>
-              Admin Role:
-              <input type="checkbox" v-model="selectedUser.isAdmin" />
-            </label>
-            <button type="submit" class="btn submit-btn">Update User</button>
-          </form>
+          <!-- Edit User Modal -->
+          <div v-if="showEditModal" class="modal-overlay">
+            <div class="modal">
+              <p v-if="updateUserErrors" class="error-message">
+                <span v-for="(msg, index) in updateUserErrors" :key="index">{{ msg }}<br /></span>
+              </p>
+              <h3>✏️ Edit User: {{ selectedUser.username }}</h3>
+              <form @submit.prevent="updateSelectedUser" class="user-form">
+                <label>
+                  Username:
+                  <input v-model="selectedUser.username" required placeholder="Enter username" />
+                </label>
+                <label>
+                  Email:
+                  <input v-model="selectedUser.email" type="email" required placeholder="Enter email" />
+                </label>
+                <label>
+                  Password:
+                  <input v-model="selectedUser.password" type="password" placeholder="Enter new password" />
+                </label>
+                <div class="modal-buttons">
+                  <button type="submit" class="btn submit-btn">Update User</button>
+                  <button @click="closeEditModal" type="button" id="cancel-btn">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Delete Confirmation Modal -->
+          <div v-if="showDeleteModal" class="delete-modal-overlay">
+            <div class="delete-modal-box">
+              <h2>🗑️ Confirm Delete</h2>
+              <p>Are you sure you want to delete user <strong>{{ selectedUserToDelete.username }}</strong>?</p>
+              <div class="delete-modal-actions">
+                <button @click="confirmDeleteUser" class="delete-modal-confirm-btn">
+                  <font-awesome-icon icon="trash" /> Yes, Delete
+                </button>
+                <button @click="closeDeleteModal" id="delete-modal-cancel-btn">
+                  <font-awesome-icon icon="times" /> Cancel
+                </button>
+              </div>
+            </div>
+          </div>
 
           <h3>➕ Create New User</h3>
+          <p v-if="updateUserErrors" class="error-message">
+            <span v-for="(msg, index) in updateUserErrors" :key="index">{{ msg }}<br /></span>
+          </p>
           <form @submit.prevent="createUser" class="user-form">
             <label>
               Username:
@@ -361,37 +422,19 @@
             </label>
             <label>
               Password:
-              <input v-model="newUser.password" type="password" required placeholder="Enter password" />
-            </label>
-            <label>
-              Admin Role:
-              <input type="checkbox" v-model="newUser.isAdmin" />
+              <input v-model="newUser.password" type="password" autocomplete="new-password" required placeholder="Enter password" />
             </label>
             <button type="submit" class="btn submit-btn">Create User</button>
           </form>
-
-          <h2 v-if="userBookings.length && selectedUser">🛫 Bookings for {{ selectedUser.username }}</h2>
-          <div v-if="userBookings.length" class="bookings-list">
-            <table>
-              <thead>
-                <tr>
-                  <th>Flight</th>
-                  <th>Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="booking in userBookings" :key="booking.id">
-                  <td>{{ booking.flight.origin.code }} → {{ booking.flight.destination.code }}</td>
-                  <td>{{ booking.date }}</td>
-                  <td>
-                    <router-link :to="`/flight/${booking.flight.id}`" class="btn btn-info">View Flight</router-link>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p v-else-if="selectedUser">No bookings found for {{ selectedUser.username }}.</p>
+        </div>
+        <div v-if="showToastUpdated" class="toast">
+          ✅ User updated successfully!
+        </div>
+        <div v-if="showToastDeleted" class="toast">
+          ✅ User deleted successfully!
+        </div>
+        <div v-if="showToastCreated" class="toast">
+          ✅ User created successfully!
         </div>
       </div>
     </div>
@@ -399,6 +442,175 @@
   </template>
 
 <style scoped>
+.delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.delete-modal-box {
+  background: #fff;
+  padding: 2rem 2.5rem;
+  border-radius: 20px;
+  width: 350px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.delete-modal-box h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.delete-modal-box p {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.delete-modal-confirm-btn {
+  background: linear-gradient(135deg, #ff4e50, #f44336);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delete-modal-confirm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+#delete-modal-cancel-btn {
+  background: #ddd;
+  color: #333;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#delete-modal-cancel-btn:hover {
+  background: #ccc;
+  transform: translateY(-2px);
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #4caf50;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  opacity: 0;
+  animation: fadeInOut 4s forwards;
+  font-size: 1rem;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(20px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(20px); }
+}
+
+#cancel-btn {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 16px;
+  background: #f44336; /* Red color */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  margin-top: 15px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#cancel-btn:hover {
+  background: #d32f2f;
+  transform: scale(1.02);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 0.8rem;
+  border: 1px solid #ccc;
+}
+
+/* Icon button styling */
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin: 0 0.3rem;
+}
+.icon-btn.danger {
+  color: red;
+}
+.icon-btn.info {
+  color: #007bff;
+}
+
+/* Modal styling */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.modal {
+  background: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  min-width: 300px;
+}
+.modal-buttons {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+}
 .popup-overlay {
   position: fixed;
   top: 0;

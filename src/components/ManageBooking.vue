@@ -2,32 +2,38 @@
     <div class="container">
       <div class="content-card">
         <h1>🔍 Manage Booking</h1>
-  
-        <!-- Booking Code Input Form -->
-        <div v-if="!booking" class="booking-form">
-          <h2>Enter Your Booking Code</h2>
-          <form @submit.prevent="fetchBooking">
-            <label>
-              Booking Code:
-              <input v-model="bookingCode" type="text" required placeholder="Enter your booking code" />
-            </label>
-            <button type="submit" class="btn submit-btn" :disabled="loading">
-              {{ loading ? 'Searching...' : 'Search Booking' }}
-            </button>
-          </form>
+
+        <div v-if="!isAuthenticated" class="error-msg">
+        ❌ You need to log in to view this page. <router-link to="/login">Login here</router-link>.
         </div>
-  
-        <!-- Error Message -->
-        <div v-if="error" class="error-msg">❌ {{ error }}</div>
-  
-        <!-- Loading Indicator -->
-        <div v-if="loading" class="loading-msg">⏳ Loading booking details...</div>
+        <div v-else-if="isAuthenticated">
+          <!-- Booking Code Input Form -->
+          <div v-if="!booking" class="booking-form">
+            <h2>Enter Your Booking Code</h2>
+            <form @submit.prevent="fetchBooking">
+              <label>
+                Booking Code:
+                <input v-model="bookingCode" type="text" required placeholder="Enter your booking code" />
+              </label>
+              <button type="submit" class="btn submit-btn" :disabled="loading">
+                {{ loading ? 'Searching...' : 'Search Booking' }}
+              </button>
+            </form>
+          </div>
+    
+          <!-- Error Message -->
+          <div v-if="error" class="error-msg">❌ {{ error }}</div>
+    
+          <!-- Loading Indicator -->
+          <div v-if="loading" class="loading-msg">⏳ Loading booking details...</div>
+        </div>
       </div>
     </div>
   </template>
   
   <script>
 import axios from 'axios';
+import { isAuthenticated } from '../utils/auth.js';
 
 export default {
   name: 'ManageBooking',
@@ -37,6 +43,9 @@ export default {
       loading: false,
       error: null,
     };
+  },
+  computed:{
+    isAuthenticated
   },
   methods: {
     fetchBooking() {

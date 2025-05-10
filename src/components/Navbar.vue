@@ -1,9 +1,13 @@
 <template>
     <header>
+      <div v-if="showPromoBanner" class="promo-banner">
+          🎉 Welcome! Here’s your promo code: <strong>{{ promoCode }}</strong>
+      </div>
       <div class="container header-content">
         <div class="logo">
           <router-link to="/">SkyJourney Airways</router-link>
         </div>
+        
         <div class="header-buttons">
           <!-- Display a welcome message when the user is logged in -->
           <span v-if="username" class="welcome-msg">Welcome, {{ username }}</span>
@@ -25,16 +29,20 @@
     </header>
   </template>
   <script>
+  import axios from 'axios';
+
   export default {
     name: 'Navbar',
     data() {
       return {
         username: null,
+        promoCode: null,
+        showPromoBanner: false,
       };
     },
     mounted() {
       const accessToken = localStorage.getItem('auth_token');
-    //   console.log(accessToken);
+      //   console.log(accessToken);
       if (accessToken) {
         fetch('http://127.0.0.1:8000/api/auth/profile/', {
           headers: {
@@ -51,18 +59,29 @@
             console.error('Error fetching user profile:', error);
           });
       }
+      axios.get('http://127.0.0.1:8000/api/promo-code/', { withCredentials: true })
+      .then(response => {
+        const token = localStorage.getItem("auth_token");
+        // console.log(response)
+        if (response.data.promo_code && !token) {
+          this.promoCode = response.data.promo_code;
+          localStorage.setItem('promo_code', response.data.promo_code)
+          this.showPromoBanner = true;
+          setTimeout(() => { this.showPromoBanner = false; }, 5000);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching promo code:', error);
+      });
     },
     methods: {
       logout() {
-        // Clear the token and user data from localStorage
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
   
-        // Redirect to the main flights page after logout
         // this.$router.push('/');
         window.location.href = '/';
   
-        // Reset the username in the UI
         this.username = null;
       }
     }
@@ -72,6 +91,27 @@
  
 
 <style scoped>
+.promo-banner {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #ff9800, #ff5722);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  font-size: 1rem;
+  animation: slideIn 0.5s ease, fadeOut 1s ease 4s forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateX(100%); }
+}
 header {
     background-color: white;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);

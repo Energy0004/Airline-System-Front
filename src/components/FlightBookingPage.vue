@@ -19,10 +19,11 @@
           <p>👥 <strong>Capacity:</strong> {{ flight.capacity }} passengers</p>
         </div>
   
-        <!-- Booking form -->
+        <!-- Booking form -->          
         <form v-if="isAuthenticated" @submit.prevent="submitBooking" class="booking-form">
           <h2>Passenger Details</h2>
-  
+          <div v-if="errorMsg" class="error-msg">❌ {{ errorMsg }}</div>
+          <br>
           <div class="passenger-card">
             <label>
               Username:
@@ -116,10 +117,8 @@ export default {
             }
             )
             .then((response) => {
-            // ✅ Assuming the response contains the booking ID (adjust if needed)
             const bookingId = response.data.id;
 
-            // Redirect to confirmation page
             this.$router.push(`/booking-confirmation/${bookingId}`);
             })
             .catch((error) => {

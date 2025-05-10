@@ -62,6 +62,9 @@
       handleLogin() {
         this.loading = true;
         this.error = null;
+
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
   
         // Send login request with username, and password
         axios
@@ -72,6 +75,7 @@
           .then((response) => {
             // Assuming the response contains 'tokens' with access token
             const { tokens } = response.data;
+            // console.log(tokens)
             
             // Store the token in localStorage or sessionStorage
             localStorage.setItem('auth_token', tokens.access);  // You can use sessionStorage instead of localStorage if needed

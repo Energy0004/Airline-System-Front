@@ -3,7 +3,6 @@
     <div class="container">
       <div class="content-card">
         <h1>Available Flights</h1>
-  
         <!-- Loading spinner -->
         <p v-if="loading">Loading flights...</p>
   
